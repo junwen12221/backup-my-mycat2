@@ -23,6 +23,7 @@ import io.mycat.beans.mysql.packet.MySQLPacket;
 import io.mycat.beans.mysql.packet.MySQLPacketSplitter;
 import io.mycat.beans.mysql.packet.PacketSplitterImpl;
 import io.mycat.beans.mysql.packet.ProxyBuffer;
+import io.mycat.bindThread.BindThreadKey;
 import io.mycat.buffer.BufferPool;
 import io.mycat.command.CommandDispatcher;
 import io.mycat.command.CommandResolver;
@@ -44,7 +45,7 @@ import java.util.Queue;
 import java.util.concurrent.LinkedTransferQueue;
 
 public final class MycatSession extends AbstractSession<MycatSession> implements LocalInFileSession,
-    MySQLProxyServerSession<MycatSession> {
+    MySQLProxyServerSession<MycatSession>, BindThreadKey {
 
   private CommandDispatcher commandHandler;
   int resultSetCount;
@@ -88,11 +89,6 @@ public final class MycatSession extends AbstractSession<MycatSession> implements
     this.packetId = 0;
   }
 
-  /**
-   * Setter for property 'commandHandler'.
-   *
-   * @param commandHandler Value to set for property 'commandHandler'.
-   */
   public void setCommandHandler(CommandDispatcher commandHandler) {
     this.commandHandler = commandHandler;
   }
@@ -169,7 +165,7 @@ public final class MycatSession extends AbstractSession<MycatSession> implements
       if (dataNode.equals(this.dataNode)) {
         return;
       } else {
-        throw new MycatException("cannot switch dataNode  maybe session in transaction");
+        throw new MycatException("cannot switch dataNode  maybe session in manager");
       }
     }
   }
@@ -195,7 +191,7 @@ public final class MycatSession extends AbstractSession<MycatSession> implements
       if (crossSwapThreadBufferPool != null) {
         SessionThread source = crossSwapThreadBufferPool.getSource();
         if (source != null) {
-          source.close();
+          source.setCurSession(null);
         }
       }
     } catch (Exception e) {
@@ -539,6 +535,7 @@ public final class MycatSession extends AbstractSession<MycatSession> implements
    * 在业务线程使用,在业务线程运行的时候设置业务线程当前的session,方便监听类获取session记录
    */
   public void deliverWorkerThread(SessionThread thread) {
+    LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@{}", thread);
     crossSwapThreadBufferPool.bindSource(thread);
     assert thread == Thread.currentThread();
   }
